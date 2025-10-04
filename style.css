@@ -5,7 +5,6 @@ body {
     scroll-behavior: smooth;
 }
 
-/* --- New Landing Page Styles --- */
 .bg-grid-pattern {
     background-image:
         linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
@@ -17,30 +16,17 @@ body {
     transition: all 0.3s ease-in-out;
 }
 
-/* --- ATTENTION: MODIFIED SPINNER STYLES --- */
 .spinner-rotate {
-    animation: spin 1s linear infinite, pulse 1.2s ease-in-out infinite;
+    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-/* New animation for the blinking effect */
-@keyframes pulse {
-  200% {
-    opacity: 2;
-  }
-}
-/* --- END OF MODIFIED STYLES --- */
-
-/* --- Original Chatbot Styles --- */
 body.chat-open #main-content {
+    /* This rule only applies to desktop view now */
     margin-left: 532px; 
 }
 
@@ -55,7 +41,6 @@ body.chat-open #main-content {
     word-wrap: break-word;
 }
 
-/* MODIFIED: New attractive chat bubble styles */
 .chat-bubble.user {
     background-image: linear-gradient(to right, #3b82f6, #2563eb);
     color: white;
@@ -77,30 +62,24 @@ body.chat-open #main-content {
     border: 1px solid #e5e7eb;
 }
 
-/* START: REPLACED TAB STYLES FOR NEW CARD DESIGN */
 .tab-button {
-    color: #4b5563; /* Gray text for inactive tabs */
-    background-color: #f3f4f6; /* Light gray background */
+    color: #4b5563; 
+    background-color: #f3f4f6;
     border: 1px solid transparent;
     transition: all 0.3s ease;
 }
 
 .tab-button:hover {
-    background-color: #e5e7eb; /* Slightly darker gray on hover */
+    background-color: #e5e7eb;
     color: #1f2937;
 }
 
 .tab-button.active {
-    background-image: linear-gradient(to right, #3b82f6, #60a5fa); /* Vibrant blue gradient */
+    background-image: linear-gradient(to right, #3b82f6, #60a5fa);
     color: white;
     border-color: transparent;
     box-shadow: 0 4px 14px 0 rgba(0, 118, 255, 0.39);
     transform: scale(1.05);
-}
-/* END: REPLACED TAB STYLES */
-
-.mic-listening i {
-    color: #ef4444; /* Red color when mic is active */
 }
 
 .animated-gradient-text {
@@ -117,18 +96,25 @@ body.chat-open #main-content {
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-/* --- Input Disabling Styles --- */
+
 #chat-input:disabled,
 #send-button:disabled,
-#mic-button:disabled,
 #emoji-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-/* We use a class for the label since it doesn't have a 'disabled' attribute */
 #file-upload-button.disabled-input {
     opacity: 0.5;
     cursor: not-allowed;
-    pointer-events: none; /* This prevents click events */
+    pointer-events: none;
+}
+
+/* --- NEW: Mobile Responsiveness --- */
+@media (max-width: 767px) {
+    /* Hide background content when chat is open on mobile */
+    body.chat-open #main-content {
+        display: none;
+        margin-left: 0;
+    }
 }

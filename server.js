@@ -11,12 +11,10 @@ const session = require('express-session');
 const mongoose = require('mongoose');
 const MongoStore = require('connect-mongo');
 const bcrypt = require('bcryptjs');
-
-// Added for robust file uploads
 const multer = require('multer');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000; // Use environment variable for port
 
 // --- Database Connection ---
 mongoose.connect(process.env.MONGO_URI, {})
@@ -35,65 +33,53 @@ const UserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-// Middleware to hash password before saving
 UserSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) {
-        return next();
-    }
+    if (!this.isModified('password')) return next();
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
 });
 
-// Method to compare entered password with hashed password
 UserSchema.methods.comparePassword = function(candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
 const User = mongoose.model('User', UserSchema);
 
-// --- Multer Configuration ---
-// Stores the uploaded file in memory as a Buffer
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// --- Middleware Configuration ---
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000', // Ready for deployment
     credentials: true
 }));
 
-// Middleware for parsing JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-// --- Session Configuration ---
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGO_URI,
-        collectionName: 'sessions'
-    }),
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI, collectionName: 'sessions' }),
     cookie: {
-        secure: false, // Set to true if using HTTPS
-        // --- THIS IS THE MODIFIED LINE ---
-        maxAge: 1000 * 60 * 60 * 24 * 7 // Cookie expires in 7 days
+        secure: 'auto', // Works with HTTP (local) and HTTPS (deployed)
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 * 7 
     }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- Serve Static Files ---
 app.use(express.static(path.join(__dirname)));
 
 // --- Passport.js Strategies Configuration ---
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/callback"
+    callbackURL: `${process.env.BASE_URL}/auth/google/callback` // Ready for deployment
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         let user = await User.findOne({ googleId: profile.id });
@@ -241,14 +227,13 @@ app.post('/chat', upload.single('file'), async (req, res) => {
     const lowerCasePrompt = userPrompt.toLowerCase();
     const introTriggers = ['introduce yourself', 'who are you', 'what is your name', "what's your name", 'who made you', 'who developed you', 'who created you'];
     if (introTriggers.some(trigger => lowerCasePrompt.includes(trigger))) {
-        const customResponse = "My name is Jarvis. I was developed by  P.V. Hareesh ,  3rd-year B.Tech CSE students from the 2024-2027 batch at PBR Visvodaya Institute of Technology & Science, Kavali. This project was completed under the guidance of Madhuri Madam.";
+        const customResponse = "My name is Jarvis. I was developed by a team of 3rd-year B.Tech CSE students from the 2024-2027 batch at PBR Visvodaya Institute of Technology & Science, Kavali.";
         return res.json({ type: 'text', data: customResponse });
     }
     
     try {
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
         
-        // --- Multimodal Logic (File + Optional Text) ---
         if (file) {
             const fileData = file.buffer.toString('base64');
             const fileMimeType = file.mimetype;
@@ -275,46 +260,29 @@ app.post('/chat', upload.single('file'), async (req, res) => {
             });
             
             if (!geminiResponse.ok) {
-                const errorBody = await geminiResponse.json().catch(() => geminiResponse.text());
+                const errorBody = await geminiResponse.json().catch(() => ({ error: `Gemini API returned status ${geminiResponse.status}` }));
                 console.error('Gemini Multimodal API Error:', errorBody);
-                throw new Error(`Failed to get a multimodal response. Status: ${geminiResponse.status}`);
+                throw new Error(errorBody.error?.message || 'Failed to get a multimodal response.');
             }
-
             const geminiData = await geminiResponse.json();
-
-            if (!geminiData.candidates || geminiData.candidates.length === 0) {
-                 if (geminiData.promptFeedback?.blockReason === 'SAFETY') {
-                     return res.json({ type: 'text', data: "I'm sorry, I cannot provide an explanation for this file due to safety restrictions." });
-                 }
-            }
-
             const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process the file.";
             return res.json({ type: 'text', data: responseText });
         }
 
-        // --- Text-Only Logic (No file attached) ---
         const routingPrompt = `Is the user asking to generate an image? Respond with a JSON object only, either {"type": "image", "prompt": "the subject for the image"} OR {"type": "text", "prompt": "the original question"}. User question: "${userPrompt}"`;
+        const geminiTextApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
         
-        const routingResponse = await fetch(geminiApiUrl, {
+        const routingResponse = await fetch(geminiTextApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: routingPrompt }] }] }),
         });
 
-        if (!routingResponse.ok) {
-            const errorBody = await routingResponse.json().catch(() => routingResponse.text());
-            console.error('Gemini Routing API Error:', errorBody);
-            throw new Error(`Failed to get a response from the routing AI. Status: ${routingResponse.status}`);
-        }
-
+        if (!routingResponse.ok) throw new Error(`Failed to get a response from the routing AI. Status: ${routingResponse.status}`);
+        
         const routingData = await routingResponse.json();
         const geminiResponseText = routingData.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!geminiResponseText) throw new Error("The AI router returned an empty response.");
-        
         const jsonMatch = geminiResponseText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("The AI router gave an invalid response format.");
-        
         const intent = JSON.parse(jsonMatch[0]);
 
         if (intent.type === 'image') {
@@ -326,28 +294,23 @@ app.post('/chat', upload.single('file'), async (req, res) => {
         }
     } catch (error) {
         console.error('Server Error in /chat endpoint:', error);
-        res.status(500).json({ error: 'Failed to process the request.' });
+        res.status(500).json({ error: error.message || 'Failed to process the request.' });
     }
 });
 
 async function generateTextWithGemini(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
     });
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => response.text());
-        console.error('Gemini Text API Error:', errorBody);
-        throw new Error('Failed to get text response from Gemini API.');
-    }
+    if (!response.ok) throw new Error('Failed to get text response from Gemini API.');
     const data = await response.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't get a response.";
 }
 
 async function generateImageWithStability(prompt) {
-    if (!STABILITY_API_KEY) throw new Error('Stability AI API key not configured.');
     const engineId = 'stable-diffusion-xl-1024-v1-0';
     const apiHost = 'https://api.stability.ai';
     const apiUrl = `${apiHost}/v1/generation/${engineId}/text-to-image`;
@@ -356,44 +319,29 @@ async function generateImageWithStability(prompt) {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${STABILITY_API_KEY}` },
         body: JSON.stringify({ text_prompts: [{ text: prompt }], cfg_scale: 7, height: 1024, width: 1024, steps: 30, samples: 1 }),
     });
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Stability API Error:', errorText);
-        throw new Error('Failed to get image from Stability API.');
-    }
+    if (!response.ok) throw new Error('Failed to get image from Stability API.');
     const data = await response.json();
     return data.artifacts[0].base64;
 }
 
-// --- NEW: Translation Endpoint ---
 app.post('/translate', async (req, res) => {
-    // Ensure user is logged in before allowing translation
     if (!req.isAuthenticated()) {
         return res.status(401).json({ error: 'Session expired. Please log in again.' });
     }
-
     const { text, targetLanguage } = req.body;
-
     if (!text || !targetLanguage) {
         return res.status(400).json({ error: 'Text and target language are required.' });
     }
-
     try {
-        // Construct a clear prompt for the Gemini API
         const translationPrompt = `Translate the following text to ${targetLanguage}. Provide only the translated text as the response:\n\n"${text}"`;
-        
-        // Use the existing function to get the translation
         const translatedText = await generateTextWithGemini(translationPrompt);
-        
         res.json({ translatedText });
-
     } catch (error) {
         console.error('Translation Error:', error);
         res.status(500).json({ error: 'Failed to translate the text.' });
     }
 });
 
-// --- App Listener ---
 app.listen(port, () => {
     console.log(`Server is listening at http://localhost:${port}`);
 });
