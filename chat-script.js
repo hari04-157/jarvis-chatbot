@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================
-    // ---         FINAL DEBUGGING VERSION FOR VOICE ASSISTANT         ---
+    // ---                FINAL VOICE ASSISTANT LOGIC                  ---
     // ===================================================================
     const toggleAssistantBtn = document.getElementById('toggle-assistant-btn');
     const assistantStatus = document.getElementById('assistant-status');
@@ -402,21 +402,34 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAssistantGesture('listening');
         
         recognition = new VoiceAssistantSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        
+        // --- FINAL FIX FOR MOBILE ---
+        // These settings make it more persistent and less likely to time out
+        recognition.continuous = true;
+        recognition.interimResults = true;
         recognition.lang = 'en-US';
 
-        let resultFound = false;
+        let finalTranscript = '';
 
         recognition.onresult = (event) => {
-            resultFound = true;
-            const transcript = event.results[0][0].transcript.trim();
-            if(userTranscript) userTranscript.textContent = `"${transcript}"`;
-            sendToAI(transcript);
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            
+            if(userTranscript) userTranscript.textContent = `"${finalTranscript || interimTranscript}"`;
+
+            if (finalTranscript) {
+                recognition.stop(); 
+                sendToAI(finalTranscript.trim());
+            }
         };
         
         recognition.onerror = (event) => {
-            resultFound = true;
             console.error('Speech recognition error:', event.error);
             if (userTranscript) {
                 userTranscript.textContent = `Mic Error: ${event.error}`;
@@ -425,14 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         recognition.onend = () => {
             if (isAssistantActive && !speechSynthesis.speaking) {
-                if (!resultFound && userTranscript) {
-                    userTranscript.textContent = "Debug: No speech detected. Retrying...";
-                }
-                setTimeout(() => {
-                    if (isAssistantActive) {
-                        listen();
-                    }
-                }, 1000);
+                listen();
             }
         };
 
@@ -475,9 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         utterance.voice = selectedVoice;
         
         utterance.onend = () => {
-            if (isAssistantActive) {
-                listen();
-            }
+            // The main 'onend' for the recognition object will handle restarting the loop
         };
         speechSynthesis.speak(utterance);
     };
