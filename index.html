@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Multi-Tool Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body class="bg-black text-white bg-grid-pattern">
+
+    <main id="main-content" class="flex flex-col items-center justify-center py-24 px-8">
+        <div id="welcome-section" class="max-w-3xl text-center">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4 animated-gradient-text">
+                AI Multi-Tool Chatbot
+            </h1>
+            <p class="text-lg text-gray-400 mb-10">
+                Your all-in-one AI assistant for chat, image generation, and more. Explore the powerful features waiting for you.
+            </p>
+            <button id="get-started-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform duration-300 hover:scale-105">
+                Get Started
+            </button>
+        </div>
+
+        <div id="login-section" class="max-w-md w-full hidden">
+            <div id="auth-forms-container" class="bg-gray-800 border border-gray-700 p-8 rounded-lg shadow-2xl">
+                <form id="signin-form">
+                    <h2 class="text-2xl font-bold text-center mb-6">Sign In</h2>
+                    <div class="space-y-4">
+                        <input type="email" id="signin-email" placeholder="Email" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="password" id="signin-password" placeholder="Password" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <button type="submit" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-md transition-transform duration-300 hover:scale-105">Sign In</button>
+                    <p class="text-center text-sm text-gray-400 mt-4"><a href="#" class="hover:underline">Forgot Password?</a></p>
+                </form>
+                <form id="signup-form" class="hidden">
+                    <h2 class="text-2xl font-bold text-center mb-6">Create Account</h2>
+                    <div class="space-y-4">
+                         <div class="flex space-x-4">
+                            <input type="text" id="signup-firstname" placeholder="First Name" class="w-1/2 p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <input type="text" id="signup-lastname" placeholder="Last Name" class="w-1/2 p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <input type="email" id="signup-email" placeholder="Email" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="password" id="signup-password" placeholder="Password" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="password" id="signup-confirm-password" placeholder="Confirm Password" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <button type="submit" class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-md transition-transform duration-300 hover:scale-105">Create Account</button>
+                </form>
+                <p class="text-center mt-6 text-gray-400">
+                    <span id="toggle-to-signup-text">New user? <a href="#" id="toggle-to-signup" class="font-semibold text-blue-400 hover:underline">Sign up first</a></span>
+                    <span id="toggle-to-signin-text" class="hidden">Already have an account? <a href="#" id="toggle-to-signin" class="font-semibold text-blue-400 hover:underline">Sign In</a></span>
+                </p>
+                <div class="my-6 flex items-center">
+                    <div class="flex-grow border-t border-gray-600"></div><span class="flex-shrink mx-4 text-gray-400">OR</span><div class="flex-grow border-t border-gray-600"></div>
+                </div>
+                <a href="/auth/google" class="w-full flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-md transition-transform duration-300 hover:scale-105">
+                    <svg class="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.057 4.734A11.94 11.94 0 0 1 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 35.798 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>
+                    Continue with Google
+                </a>
+            </div>
+            <div id="error-banner" class="hidden mt-6 p-3 bg-red-800 text-red-200 border border-red-600 rounded-lg"></div>
+        </div>
+
+        <section id="features" class="w-full pt-24">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-white">Explore the Features</h2>
+                    <p class="text-lg text-gray-400 mt-4 mb-16">
+                        Discover tools designed to boost your productivity and creativity.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="feature-card bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 hover:-translate-y-2">
+                        <div class="bg-blue-600/10 p-4 rounded-full mb-6 inline-block"><i data-lucide="bot" class="w-8 h-8 text-blue-400"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-3">Intelligent AI Chatbot</h3>
+                        <p class="text-gray-400">Engage in natural conversations, ask complex questions, and get instant, helpful responses powered by cutting-edge AI.</p>
+                    </div>
+                    <div class="feature-card bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 hover:-translate-y-2">
+                        <div class="bg-green-600/10 p-4 rounded-full mb-6 inline-block"><i data-lucide="image" class="w-8 h-8 text-green-400"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-3">AI Image Generation</h3>
+                        <p class="text-gray-400">Bring your ideas to life. Simply describe the image you want, and our AI will create a unique, high-quality picture for you.</p>
+                    </div>
+                    <div class="feature-card bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 hover:-translate-y-2">
+                        <div class="bg-purple-600/10 p-4 rounded-full mb-6 inline-block"><i data-lucide="wrench" class="w-8 h-8 text-purple-400"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-3">Powerful Utility Tools</h3>
+                        <p class="text-gray-400">Includes handy tools like Video-to-Audio extraction and Text-to-Speech conversion, right within the chat panel.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

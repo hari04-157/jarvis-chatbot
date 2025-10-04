@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    scroll-behavior: smooth;
+}
+
+/* --- New Landing Page Styles --- */
+.bg-grid-pattern {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.feature-card {
+    transition: all 0.3s ease-in-out;
+}
+
+/* --- ATTENTION: MODIFIED SPINNER STYLES --- */
+.spinner-rotate {
+    animation: spin 1s linear infinite, pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* New animation for the blinking effect */
+@keyframes pulse {
+  200% {
+    opacity: 2;
+  }
+}
+/* --- END OF MODIFIED STYLES --- */
+
+/* --- Original Chatbot Styles --- */
+body.chat-open #main-content {
+    margin-left: 532px; 
+}
+
+#main-content {
+    transition: margin-left 0.4s ease-in-out;
+}
+
+.chat-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    word-wrap: break-word;
+}
+
+/* MODIFIED: New attractive chat bubble styles */
+.chat-bubble.user {
+    background-image: linear-gradient(to right, #3b82f6, #2563eb);
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-bubble.bot {
+    background-color: white;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-bubble.image-bubble {
+    padding: 6px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+}
+
+/* START: REPLACED TAB STYLES FOR NEW CARD DESIGN */
+.tab-button {
+    color: #4b5563; /* Gray text for inactive tabs */
+    background-color: #f3f4f6; /* Light gray background */
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-button:hover {
+    background-color: #e5e7eb; /* Slightly darker gray on hover */
+    color: #1f2937;
+}
+
+.tab-button.active {
+    background-image: linear-gradient(to right, #3b82f6, #60a5fa); /* Vibrant blue gradient */
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 14px 0 rgba(0, 118, 255, 0.39);
+    transform: scale(1.05);
+}
+/* END: REPLACED TAB STYLES */
+
+.mic-listening i {
+    color: #ef4444; /* Red color when mic is active */
+}
+
+.animated-gradient-text {
+    background-image: linear-gradient(-45deg, #46e5b3, #1da3d8, #2563eb, #f63b3b, #60a5fa, #2563eb, #1d4ed8, #4f46e5);
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-flow 8s ease-in-out infinite;
+}
+
+@keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+/* --- Input Disabling Styles --- */
+#chat-input:disabled,
+#send-button:disabled,
+#mic-button:disabled,
+#emoji-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* We use a class for the label since it doesn't have a 'disabled' attribute */
+#file-upload-button.disabled-input {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none; /* This prevents click events */
+}
