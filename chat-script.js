@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const formatMarkdownForHTML = (text) => text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
 
-    const addMessage = (message, sender) => {
+    window.addMessage = (message, sender) => {
         if (!chatWindow) return;
         const messageDiv = document.createElement('div');
         messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isAssistantActive) return;
         isAssistantActive = false;
         
-        if (recognition) recognition.stop();
+        if (recognition) recognition.abort(); // Use abort to prevent onend from firing unnecessarily
         if (speechSynthesis.speaking) speechSynthesis.cancel();
         
         if(userTranscript) userTranscript.textContent = "...";
@@ -403,8 +403,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         recognition = new VoiceAssistantSpeechRecognition();
         
-        // --- FINAL FIX FOR MOBILE ---
-        // These settings make it more persistent and less likely to time out
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
@@ -437,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         recognition.onend = () => {
-            if (isAssistantActive && !speechSynthesis.speaking) {
+            if (isAssistantActive && !finalTranscript && !speechSynthesis.speaking) {
                 listen();
             }
         };
@@ -457,8 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             speak(aiResponse);
         } catch (error) {
             console.error("Error sending to AI from voice assistant:", error);
-            const errorMessage = `Voice assistant error: ${error.toString()}`;
-            addMessage(errorMessage, 'bot');
+            addMessage(`Voice assistant error: ${error.toString()}`, 'bot');
             speak("Sorry, an error occurred. Please check the chat window for details.");
             stopConversation();
         }
@@ -481,8 +478,11 @@ document.addEventListener('DOMContentLoaded', () => {
         utterance.voice = selectedVoice;
         
         utterance.onend = () => {
-            // The main 'onend' for the recognition object will handle restarting the loop
+            if (isAssistantActive) {
+                listen();
+            }
         };
+
         speechSynthesis.speak(utterance);
     };
 
