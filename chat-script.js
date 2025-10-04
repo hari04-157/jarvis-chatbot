@@ -384,7 +384,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSpeech();
 
     const startConversation = () => {
-        if (!VoiceAssistantSpeechRecognition || isAssistantActive) return;
+        if (!VoiceAssistantSpeechRecognition) {
+            assistantStatus.textContent = "Speech recognition not supported in this browser.";
+            return;
+        }
+        if (isAssistantActive) return;
         
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(() => {
@@ -433,11 +437,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
+            if (userTranscript) {
+                userTranscript.textContent = `Mic Error: ${event.error}`;
+            }
         };
         
         recognition.onend = () => {
             if (isAssistantActive && !speechSynthesis.speaking) {
-                listen();
+                // To prevent a rapid on/off loop on some mobile errors, 
+                // we add a small delay before trying to listen again.
+                setTimeout(() => {
+                    if (isAssistantActive) {
+                        listen();
+                    }
+                }, 500);
             }
         };
 
