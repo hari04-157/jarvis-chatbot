@@ -14,7 +14,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 
 const app = express();
-const port = process.env.PORT || 3000; // Use environment variable for port
+const port = process.env.PORT || 3000;
 
 // --- Database Connection ---
 mongoose.connect(process.env.MONGO_URI, {})
@@ -51,7 +51,7 @@ const upload = multer({ storage: storage });
 
 // --- Middleware Configuration ---
 app.use(cors({
-    origin: process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000', // Ready for deployment
+    origin: process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000',
     credentials: true
 }));
 
@@ -64,7 +64,7 @@ app.use(session({
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URI, collectionName: 'sessions' }),
     cookie: {
-        secure: 'auto', // Works with HTTP (local) and HTTPS (deployed)
+        secure: 'auto',
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24 * 7 
     }
@@ -79,7 +79,7 @@ app.use(express.static(path.join(__dirname)));
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${process.env.BASE_URL}/auth/google/callback` // Ready for deployment
+    callbackURL: `${process.env.BASE_URL}/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         let user = await User.findOne({ googleId: profile.id });
@@ -171,7 +171,7 @@ app.post('/auth/signup', async (req, res) => {
     }
 });
 
-app.post('/auth/login', passport.authenticate('local'), (req, res) => {
+app.post('/auth/login', passport.authenticate('local', { failureMessage: true }), (req, res) => {
     res.status(200).json({ message: 'Logged in successfully' });
 });
 
@@ -224,55 +224,33 @@ app.post('/chat', upload.single('file'), async (req, res) => {
         return res.status(400).json({ error: 'Prompt or file is required' });
     }
     
-    const lowerCasePrompt = userPrompt.toLowerCase();
-    const introTriggers = ['introduce yourself', 'who are you', 'what is your name', "what's your name", 'who made you', 'who developed you', 'who created you'];
-    if (introTriggers.some(trigger => lowerCasePrompt.includes(trigger))) {
-        const customResponse = "My name is Jarvis. I was developed by a team of 3rd-year B.Tech CSE students from the 2024-2027 batch at PBR Visvodaya Institute of Technology & Science, Kavali.";
-        return res.json({ type: 'text', data: customResponse });
-    }
-    
     try {
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
         
         if (file) {
             const fileData = file.buffer.toString('base64');
-            const fileMimeType = file.mimetype;
-
             const requestBody = {
                 contents: [{ 
                     parts: [
                         { text: userPrompt || "Please provide a detailed explanation of this file." },
-                        { inline_data: { mime_type: fileMimeType, data: fileData } }
+                        { inline_data: { mime_type: file.mimetype, data: fileData } }
                     ]
                 }],
-                safetySettings: [
-                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                ]
             };
-            
             const geminiResponse = await fetch(geminiApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
-            
-            if (!geminiResponse.ok) {
-                const errorBody = await geminiResponse.json().catch(() => ({ error: `Gemini API returned status ${geminiResponse.status}` }));
-                console.error('Gemini Multimodal API Error:', errorBody);
-                throw new Error(errorBody.error?.message || 'Failed to get a multimodal response.');
-            }
+            if (!geminiResponse.ok) throw new Error(`Gemini Vision API Error: ${geminiResponse.status}`);
             const geminiData = await geminiResponse.json();
             const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process the file.";
             return res.json({ type: 'text', data: responseText });
         }
 
         const routingPrompt = `Is the user asking to generate an image? Respond with a JSON object only, either {"type": "image", "prompt": "the subject for the image"} OR {"type": "text", "prompt": "the original question"}. User question: "${userPrompt}"`;
-        const geminiTextApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
         
-        const routingResponse = await fetch(geminiTextApiUrl, {
+        const routingResponse = await fetch(geminiApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: routingPrompt }] }] }),
@@ -282,7 +260,11 @@ app.post('/chat', upload.single('file'), async (req, res) => {
         
         const routingData = await routingResponse.json();
         const geminiResponseText = routingData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!geminiResponseText) throw new Error("The AI router returned an empty response.");
+        
         const jsonMatch = geminiResponseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("The AI router gave an invalid response format.");
+        
         const intent = JSON.parse(jsonMatch[0]);
 
         if (intent.type === 'image') {
@@ -299,7 +281,7 @@ app.post('/chat', upload.single('file'), async (req, res) => {
 });
 
 async function generateTextWithGemini(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

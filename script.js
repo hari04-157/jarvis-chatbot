@@ -1,8 +1,5 @@
-// script.js
-
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. "GET STARTED" BUTTON LOGIC (NEW FLOW) ---
     const welcomeSection = document.getElementById('welcome-section');
     const loginSection = document.getElementById('login-section');
     const getStartedBtn = document.getElementById('get-started-btn');
@@ -10,32 +7,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getStartedBtn) {
         getStartedBtn.addEventListener('click', async () => {
             try {
-                // Check if the user is already logged in
                 const response = await fetch('/api/user');
                 const data = await response.json();
 
                 if (data.loggedIn) {
-                    // If logged in, go directly to the chat page
                     window.location.href = '/chat.html';
                 } else {
-                    // If not logged in, show the login/signup forms
                     welcomeSection.classList.add('hidden');
-                    // We hide the entire main content area to focus on the form
                     document.getElementById('features').classList.add('hidden');
                     loginSection.classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Error checking auth status:', error);
-                // Fallback to showing the login form if the check fails
                 welcomeSection.classList.add('hidden');
                 document.getElementById('features').classList.add('hidden');
                 loginSection.classList.remove('hidden');
             }
         });
     }
-
-    // --- 2. EXISTING FORM LOGIC ---
-    // (This code remains the same as before)
 
     // Form Toggling Logic
     const signinForm = document.getElementById('signin-form');
@@ -77,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
         errorBanner.classList.add('hidden');
     };
 
-    // --- Signup Form Handler ---
     if (signupForm) {
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -109,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Signin Form Handler ---
     if (signinForm) {
         signinForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -122,10 +109,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-                const data = await response.json();
+                
                 if (!response.ok) {
+                    // Handle non-JSON responses for failed logins
+                    if (response.status === 401) {
+                         throw new Error('Incorrect email or password.');
+                    }
+                    const data = await response.json();
                     throw new Error(data.message || 'Login failed.');
                 }
+                
                 window.location.href = '/chat.html';
             } catch (error) {
                 showError(error.message);

@@ -65,7 +65,7 @@
             <div id="chatbot-tab" class="tab-content h-full flex flex-col bg-gradient-to-br from-gray-50 to-blue-100">
                 <div id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-4">
                     <div class="flex justify-start">
-                        <div class="chat-bubble bot">Hello! I'm logged in and ready to help. How can I assist you?</div>
+                        <div class="chat-bubble bot">Hello! I'm ready to help. How can I assist you?</div>
                     </div>
                 </div>
                 <div id="chat-loading" class="hidden p-4 flex items-center justify-start">
@@ -105,9 +105,55 @@
                     </div>
                 </div>
             </div>
-            <div id="vtoa-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">...</div>
-            <div id="ttoa-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">...</div>
-            <div id="translator-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">...</div>
+            <div id="vtoa-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">
+               <div class="w-full max-w-md">
+                   <i data-lucide="video" class="mx-auto h-16 w-16 text-blue-500"></i>
+                   <h2 class="mt-4 text-2xl font-bold text-gray-800">Video to Audio Extractor</h2>
+                   <p class="mt-2 text-gray-600">Extract audio from a video file.</p>
+                   <div class="mt-6">
+                       <label for="vtoa-input" class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                           <i data-lucide="upload" class="w-5 h-5 mr-2"></i> Select Video
+                       </label>
+                       <input id="vtoa-input" type="file" accept="video/*" class="hidden">
+                   </div>
+                   <p id="vtoa-filename" class="mt-4 text-sm text-gray-500"></p>
+                   <button id="vtoa-convert" class="mt-4 w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 disabled:bg-gray-400" disabled>Extract Audio</button>
+                   <div id="vtoa-status" class="mt-4"></div>
+               </div>
+           </div>
+           <div id="ttoa-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">
+               <div class="w-full max-w-md">
+                   <i data-lucide="volume-2" class="mx-auto h-16 w-16 text-green-500"></i>
+                   <h2 class="mt-4 text-2xl font-bold text-gray-800">Text to Speech</h2>
+                   <p class="mt-2 text-gray-600">Convert your text into speech.</p>
+                   <div class="mt-6 w-full space-y-4">
+                       <textarea id="ttoa-text" class="w-full h-32 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Enter text here..."></textarea>
+                       <select id="ttoa-voice" class="w-full p-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                       <button id="ttoa-speak" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600">Speak</button>
+                   </div>
+               </div>
+           </div>
+           <div id="translator-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4">
+               <div class="w-full max-w-md">
+                   <i data-lucide="languages" class="mx-auto h-16 w-16 text-purple-500"></i>
+                   <h2 class="mt-4 text-2xl font-bold text-gray-800">Language Translator</h2>
+                   <p class="mt-2 text-gray-600">Translate text instantly.</p>
+                   <div class="mt-6 w-full space-y-4">
+                       <textarea id="translator-text-input" class="w-full h-24 p-2 border rounded-lg" placeholder="Enter text..."></textarea>
+                       <select id="translator-language-select" class="w-full p-2 border rounded-lg bg-white">
+                           <option value="Spanish">Spanish</option>
+                           <option value="French">French</option>
+                           <option value="German">German</option>
+                           <option value="Hindi">Hindi</option>
+                           <option value="Telugu">Telugu</option>
+                           <option value="Japanese">Japanese</option>
+                           <option value="Russian">Russian</option>
+                       </select>
+                       <button id="translator-button" class="w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600">Translate</button>
+                       <div id="translator-output" class="w-full min-h-[6rem] p-3 mt-4 bg-gray-100 border rounded-lg text-left text-gray-800"></div>
+                   </div>
+               </div>
+           </div>
             <div id="assistant-tab" class="tab-content hidden h-full flex flex-col items-center justify-center text-center p-4 bg-gray-900 text-white">
                 <div class="w-full max-w-md relative flex flex-col items-center">
                     <canvas id="voice-visualizer" width="300" height="300"></canvas>
