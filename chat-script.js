@@ -109,7 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chatWindow) return;
         const messageDiv = document.createElement('div');
         messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-        const formattedMessage = sender === 'bot' ? formatMarkdownForHTML(message) : message;
+        // Basic sanitization to prevent HTML injection from error messages
+        const sanitizedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const formattedMessage = (sender === 'bot' ? sanitizedMessage.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') : sanitizedMessage).replace(/\n/g, '<br>');
         messageDiv.innerHTML = `<div class="chat-bubble ${sender}">${formattedMessage}</div>`;
         chatWindow.appendChild(messageDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -147,19 +149,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch('/chat', { method: 'POST', body: formData });
+            
             if (response.status === 401) {
                  addMessage('Your session has expired. Redirecting to login...', 'bot');
                  setTimeout(() => { window.location.href = '/'; }, 2000);
                  return;
             }
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'An unknown error occurred.');
             
-            if (data.type === 'image') addImage(data.data);
-            else addMessage(data.data, 'bot');
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Server responded with status: ${response.status}`);
+            }
+            
+            if (data.type === 'image') {
+                addImage(data.data);
+            } else {
+                addMessage(data.data, 'bot');
+            }
 
         } catch (error) {
-            addMessage(`Error: ${error.message}`, 'bot');
+            console.error("handleChat Error:", error);
+            addMessage(`A technical error occurred: ${error.toString()}`, 'bot');
         } finally {
             chatLoading.classList.add('hidden');
             clearAttachment();
