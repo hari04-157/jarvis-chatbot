@@ -170,35 +170,61 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sendButton) sendButton.addEventListener('click', handleChat);
     if (chatInput) chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleChat());
 
-    // --- Voice Assistant, Utilities, Translator (all combined below) ---
-    const vtoaInput = document.getElementById('vtoa-input');
-    if(vtoaInput) { /* ...unchanged... */ }
-
-    const ttoaSpeakBtn = document.getElementById('ttoa-speak');
-    if(ttoaSpeakBtn) { /* ...unchanged... */ }
-    
-    const translatorButton = document.getElementById('translator-button');
-    if (translatorButton) { /* ...unchanged... */ }
+    // --- Utility Functions (Video to Audio, Text to Audio, Translator) ---
+    // All of this logic remains the same.
+    // ...
 
     // ===================================================================
-    // ---                UPDATED VOICE ASSISTANT LOGIC                ---
+    // ---         REWRITTEN VOICE ASSISTANT LOGIC (SIMPLIFIED)        ---
     // ===================================================================
     const toggleAssistantBtn = document.getElementById('toggle-assistant-btn');
     const assistantStatus = document.getElementById('assistant-status');
     const userTranscript = document.getElementById('user-transcript');
-    const visualizerCanvas = document.getElementById('voice-visualizer');
-    const canvasCtx = visualizerCanvas.getContext('2d');
+    const assistantGesture = document.getElementById('assistant-gesture'); // New gesture display
 
     const VoiceAssistantSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
-    let audioContext;
-    let analyser;
-    let source;
-    let dataArray;
-    let animationFrameId;
     let isAssistantActive = false;
     let assistantVoices = [];
 
+    // This new function controls the icon and text status
+    const updateAssistantGesture = (state) => {
+        let icon = 'mic';
+        let text = 'Press the button to start.';
+        let animationClass = '';
+
+        switch (state) {
+            case 'listening':
+                icon = 'mic';
+                text = 'Listening...';
+                animationClass = 'animate-pulse';
+                break;
+            case 'thinking':
+                icon = 'brain-circuit';
+                text = 'Thinking...';
+                animationClass = 'animate-spin';
+                break;
+            case 'speaking':
+                icon = 'volume-2';
+                text = 'Speaking...';
+                animationClass = 'animate-pulse';
+                break;
+            case 'idle':
+            default:
+                icon = 'mic';
+                text = 'Press the button to start.';
+                break;
+        }
+
+        if (assistantGesture) {
+            assistantGesture.innerHTML = `<i data-lucide="${icon}" class="w-24 h-24 ${animationClass}"></i>`;
+            lucide.createIcons();
+        }
+        if (assistantStatus) {
+            assistantStatus.textContent = text;
+        }
+    };
+    
     const setupSpeech = () => {
         const loadVoices = () => {
             assistantVoices = speechSynthesis.getVoices();
@@ -208,21 +234,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = loadVoices;
         }
+        updateAssistantGesture('idle'); // Set initial state
     };
     setupSpeech();
 
     const startConversation = () => {
         if (!VoiceAssistantSpeechRecognition || isAssistantActive) return;
         
+        // We only need to request permission, not use the stream
         navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
+            .then(() => {
                 isAssistantActive = true;
                 toggleAssistantBtn.innerHTML = `<i data-lucide="mic-off" class="w-5 h-5 mr-2"></i> Stop Assistant`;
                 toggleAssistantBtn.classList.add('bg-red-600', 'hover:bg-red-700');
                 toggleAssistantBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
                 lucide.createIcons();
-                
-                setupVisualizer(stream); 
                 listen(); 
             })
             .catch(err => {
@@ -237,27 +263,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (recognition) recognition.stop();
         if (speechSynthesis.speaking) speechSynthesis.cancel();
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
         
-        if (source) {
-            source.mediaStream.getTracks().forEach(track => track.stop());
-        }
-        if (audioContext && audioContext.state !== 'closed') {
-            audioContext.close();
-        }
-        
-        assistantStatus.textContent = "Press the button to start.";
         userTranscript.textContent = "...";
         toggleAssistantBtn.innerHTML = `<i data-lucide="mic" class="w-5 h-5 mr-2"></i> Start Assistant`;
         toggleAssistantBtn.classList.add('bg-green-600', 'hover:bg-green-700');
         toggleAssistantBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
         lucide.createIcons();
-        clearCanvas();
+        updateAssistantGesture('idle');
     };
 
     const listen = () => {
         if (!isAssistantActive) return;
-        assistantStatus.textContent = "Listening...";
+        updateAssistantGesture('listening');
         
         recognition = new VoiceAssistantSpeechRecognition();
         recognition.continuous = false;
@@ -267,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript.trim();
             userTranscript.textContent = `"${transcript}"`;
-            assistantStatus.textContent = "Thinking...";
             sendToAI(transcript);
         };
         
@@ -285,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const sendToAI = async (promptText) => {
+        updateAssistantGesture('thinking');
         try {
             const formData = new FormData();
             formData.append('prompt', promptText);
@@ -303,10 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const speak = (text) => {
         if (speechSynthesis.speaking) speechSynthesis.cancel();
+        updateAssistantGesture('speaking');
         
         const utterance = new SpeechSynthesisUtterance(sanitizeTextForSpeech(text));
         
-        // **UPDATED VOICE SELECTION**: Prefers male voices if available
         let selectedVoice = assistantVoices.find(voice => voice.name === 'Microsoft David - English (United States)') || 
                             assistantVoices.find(voice => voice.name === 'Google UK English Male') ||
                             assistantVoices.find(voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('male')) ||
@@ -315,59 +332,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         utterance.voice = selectedVoice;
         
-        utterance.onstart = () => { assistantStatus.textContent = "Speaking..."; };
         utterance.onend = () => {
             if (isAssistantActive) {
                 listen();
             }
         };
         speechSynthesis.speak(utterance);
-    };
-
-    const setupVisualizer = (stream) => {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        source = audioContext.createMediaStreamSource(stream);
-        source.connect(analyser);
-        analyser.fftSize = 512;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        drawVisualizer();
-    };
-
-    const drawVisualizer = () => {
-        if (!isAssistantActive) return;
-        animationFrameId = requestAnimationFrame(drawVisualizer);
-        analyser.getByteFrequencyData(dataArray);
-        canvasCtx.fillStyle = '#111827';
-        canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-        const centerX = visualizerCanvas.width / 2;
-        const centerY = visualizerCanvas.height / 2;
-        const radius = 60, barWidth = 2, numBars = 100;
-        const barHeightMultiplier = 0.4;
-        for (let i = 0; i < numBars; i++) {
-            const barHeight = dataArray[i] * barHeightMultiplier;
-            const angle = (i / numBars) * 2 * Math.PI;
-            const startX = centerX + radius * Math.cos(angle);
-            const startY = centerY + radius * Math.sin(angle);
-            const endX = centerX + (radius + barHeight) * Math.cos(angle);
-            const endY = centerY + (radius + barHeight) * Math.sin(angle);
-            const gradient = canvasCtx.createLinearGradient(0, 0, 0, visualizerCanvas.height);
-            gradient.addColorStop(0, '#3b82f6');
-            gradient.addColorStop(1, '#a855f7');
-            canvasCtx.strokeStyle = gradient;
-            canvasCtx.lineWidth = barWidth;
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(startX, startY);
-            canvasCtx.lineTo(endX, endY);
-            canvasCtx.stroke();
-        }
-    };
-
-    const clearCanvas = () => {
-        if(canvasCtx) {
-            canvasCtx.fillStyle = '#111827';
-            canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-        }
     };
 
     if (toggleAssistantBtn) {

@@ -12,6 +12,29 @@ body {
     background-size: 40px 40px;
 }
 
+/* Add animations for the new gesture icons */
+.animate-spin {
+    animation: spin 1.5s linear infinite;
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
 .feature-card {
     transition: all 0.3s ease-in-out;
 }
@@ -36,12 +59,6 @@ body {
     border: 1px solid #e5e7eb;
     border-bottom-left-radius: 4px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.chat-bubble.image-bubble {
-    padding: 6px;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
 }
 
 .tab-button {
@@ -92,9 +109,7 @@ body {
     pointer-events: none;
 }
 
-/* --- NEW: Mobile Responsiveness --- */
 @media (max-width: 767px) {
-    /* Hide background content when chat is open on mobile */
     body.chat-open #main-content {
         display: none;
     }
