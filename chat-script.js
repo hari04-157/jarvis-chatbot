@@ -109,7 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chatWindow) return;
         const messageDiv = document.createElement('div');
         messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-        const formattedMessage = sender === 'bot' ? formatMarkdownForHTML(message) : message;
+        // Basic sanitization to prevent HTML injection from error messages
+        const sanitizedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const formattedMessage = (sender === 'bot' ? sanitizedMessage.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') : sanitizedMessage).replace(/\n/g, '<br>');
         messageDiv.innerHTML = `<div class="chat-bubble ${sender}">${formattedMessage}</div>`;
         chatWindow.appendChild(messageDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -147,19 +149,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch('/chat', { method: 'POST', body: formData });
+            
             if (response.status === 401) {
                  addMessage('Your session has expired. Redirecting to login...', 'bot');
                  setTimeout(() => { window.location.href = '/'; }, 2000);
                  return;
             }
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'An unknown error occurred.');
             
-            if (data.type === 'image') addImage(data.data);
-            else addMessage(data.data, 'bot');
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Server responded with status: ${response.status}`);
+            }
+            
+            if (data.type === 'image') {
+                addImage(data.data);
+            } else {
+                addMessage(data.data, 'bot');
+            }
 
         } catch (error) {
-            addMessage(`Error: ${error.message}`, 'bot');
+            console.error("handleChat Error:", error);
+            addMessage(`A technical error occurred: ${error.toString()}`, 'bot');
         } finally {
             chatLoading.classList.add('hidden');
             clearAttachment();
@@ -169,10 +180,145 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (sendButton) sendButton.addEventListener('click', handleChat);
     if (chatInput) chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleChat());
+    
+    // --- Utility Functions ---
+    const vtoaInput = document.getElementById('vtoa-input');
+    const vtoaConvertBtn = document.getElementById('vtoa-convert');
+    const vtoaFilename = document.getElementById('vtoa-filename');
+    let vtoaFile;
+    if(vtoaInput) {
+        vtoaInput.addEventListener('change', (e) => {
+            vtoaFile = e.target.files[0];
+            if (vtoaFile) {
+                vtoaFilename.textContent = `Selected: ${vtoaFile.name}`;
+                vtoaConvertBtn.disabled = false;
+                document.getElementById('vtoa-status').innerHTML = '';
+            }
+        });
+    }
+    if(vtoaConvertBtn) {
+        vtoaConvertBtn.addEventListener('click', async () => {
+            if (!vtoaFile) return;
+            showStatus('vtoa-status', 'Processing...', 'info');
+            vtoaConvertBtn.disabled = true;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(e.target.result);
+                    const wavBlob = audioBufferToWav(audioBuffer);
+                    const url = URL.createObjectURL(wavBlob);
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url;
+                    downloadLink.download = `${vtoaFile.name.split('.')[0]}.wav`;
+                    downloadLink.className = 'mt-4 block text-center text-blue-600 hover:underline';
+                    downloadLink.innerText = 'Click here to download your audio file';
+                    const statusContainer = document.getElementById('vtoa-status');
+                    showStatus('vtoa-status', 'Conversion successful!', 'success');
+                    statusContainer.appendChild(downloadLink);
+                } catch (error) {
+                    console.error('Conversion failed:', error);
+                    showStatus('vtoa-status', 'Error: This video format may not be supported by your browser.', 'error');
+                } finally {
+                    vtoaConvertBtn.disabled = false;
+                }
+            };
+            reader.readAsArrayBuffer(vtoaFile);
+        });
+    }
+    const ttoaText = document.getElementById('ttoa-text');
+    const ttoaVoice = document.getElementById('ttoa-voice');
+    const ttoaSpeakBtn = document.getElementById('ttoa-speak');
+    let voices = [];
+    function populateVoiceList() {
+        if(!ttoaVoice) return;
+        voices = speechSynthesis.getVoices();
+        ttoaVoice.innerHTML = voices
+            .map(voice => `<option value="${voice.name}">${voice.name} (${voice.lang})</option>`)
+            .join('');
+    }
+    if(speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+    populateVoiceList();
+    if(ttoaSpeakBtn) {
+        ttoaSpeakBtn.addEventListener('click', () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            const text = ttoaText.value;
+            if (text.trim().length > 0) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = voices.find(voice => voice.name === ttoaVoice.value);
+                speechSynthesis.speak(utterance);
+            }
+        });
+    }
+    function showStatus(elementId, message, type = 'info') {
+        const el = document.getElementById(elementId);
+        if(!el) return;
+        const colorClass = type === 'success' ? 'text-green-600' : (type === 'error' ? 'text-red-600' : 'text-gray-600');
+        el.innerHTML = `<div class="p-2 mt-2 rounded-md ${type !== 'info' ? 'bg-gray-100' : ''} ${colorClass}">${message}</div>`;
+    };
+    function audioBufferToWav(buffer) {
+        let numOfChan = buffer.numberOfChannels, len = buffer.length * numOfChan * 2 + 44, wavBuffer = new ArrayBuffer(len), view = new DataView(wavBuffer), channels = [], i, sample, offset = 0, pos = 0;
+        setUint32(0x46464952); setUint32(len - 8); setUint32(0x45564157); setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan); setUint32(buffer.sampleRate); setUint32(buffer.sampleRate * 2 * numOfChan); setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(len - pos - 4);
+        for (i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+        while (pos < len) {
+            for (i = 0; i < numOfChan; i++) {
+                sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                view.setInt16(pos, sample, true);
+                pos += 2;
+            }
+            offset++;
+        }
+        return new Blob([view], { type: 'audio/wav' });
+        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+    }
 
-    // --- Utility Functions (Video to Audio, Text to Audio, Translator) ---
-    // All of this logic remains the same.
-    // ...
+    // --- Language Translator Logic ---
+    const translatorTextInput = document.getElementById('translator-text-input');
+    const translatorLangSelect = document.getElementById('translator-language-select');
+    const translatorButton = document.getElementById('translator-button');
+    const translatorOutput = document.getElementById('translator-output');
+    if (translatorButton) {
+        translatorButton.addEventListener('click', async () => {
+            const textToTranslate = translatorTextInput.value;
+            const targetLanguage = translatorLangSelect.value;
+            if (!textToTranslate.trim()) {
+                translatorOutput.textContent = 'Please enter some text to translate.';
+                return;
+            }
+            translatorButton.disabled = true;
+            translatorButton.textContent = 'Translating...';
+            translatorOutput.textContent = '';
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: textToTranslate, targetLanguage: targetLanguage })
+                });
+                if (response.status === 401) {
+                    translatorOutput.textContent = 'Your session has expired. Please log in again.';
+                    return;
+                }
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Translation failed due to a server error.' }));
+                    throw new Error(errorData.error);
+                }
+                const data = await response.json();
+                translatorOutput.textContent = data.translatedText;
+            } catch (error) {
+                console.error('Translation error:', error);
+                translatorOutput.textContent = `Error: ${error.message}`;
+            } finally {
+                translatorButton.disabled = false;
+                translatorButton.textContent = 'Translate';
+            }
+        });
+    }
 
     // ===================================================================
     // ---         REWRITTEN VOICE ASSISTANT LOGIC (SIMPLIFIED)        ---
@@ -180,14 +326,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleAssistantBtn = document.getElementById('toggle-assistant-btn');
     const assistantStatus = document.getElementById('assistant-status');
     const userTranscript = document.getElementById('user-transcript');
-    const assistantGesture = document.getElementById('assistant-gesture'); // New gesture display
+    const assistantGesture = document.getElementById('assistant-gesture'); 
 
     const VoiceAssistantSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isAssistantActive = false;
     let assistantVoices = [];
 
-    // This new function controls the icon and text status
     const updateAssistantGesture = (state) => {
         let icon = 'mic';
         let text = 'Press the button to start.';
@@ -234,14 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = loadVoices;
         }
-        updateAssistantGesture('idle'); // Set initial state
+        updateAssistantGesture('idle'); 
     };
     setupSpeech();
 
     const startConversation = () => {
         if (!VoiceAssistantSpeechRecognition || isAssistantActive) return;
         
-        // We only need to request permission, not use the stream
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(() => {
                 isAssistantActive = true;
@@ -311,8 +455,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const aiResponse = data.data || "I'm not sure how to respond to that.";
             speak(aiResponse);
         } catch (error) {
-            console.error("Error sending to AI:", error);
-            speak("Sorry, I encountered an error.");
+            console.error("Error sending to AI from voice assistant:", error);
+            const errorMessage = `Voice assistant error: ${error.toString()}`;
+            addMessage(errorMessage, 'bot');
+            speak("Sorry, I encountered an error. Please check the chat window for details.");
+            stopConversation();
         }
     };
     
