@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isAssistantActive) return;
         isAssistantActive = false;
         
-        if (recognition) recognition.abort(); // Use abort to prevent onend from firing unnecessarily
+        if (recognition) recognition.abort(); // Use abort for a quick stop
         if (speechSynthesis.speaking) speechSynthesis.cancel();
         
         if(userTranscript) userTranscript.textContent = "...";
