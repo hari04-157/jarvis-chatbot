@@ -47,17 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let attachedFile = null;
 
     const disableChatInputs = () => {
-        chatInput.disabled = true;
-        sendButton.disabled = true;
-        emojiButton.disabled = true;
-        fileUploadButton.classList.add('disabled-input');
+        if(chatInput) chatInput.disabled = true;
+        if(sendButton) sendButton.disabled = true;
+        if(emojiButton) emojiButton.disabled = true;
+        if(fileUploadButton) fileUploadButton.classList.add('disabled-input');
     };
 
     const enableChatInputs = () => {
-        chatInput.disabled = false;
-        sendButton.disabled = false;
-        emojiButton.disabled = false;
-        fileUploadButton.classList.remove('disabled-input');
+        if(chatInput) chatInput.disabled = false;
+        if(sendButton) sendButton.disabled = false;
+        if(emojiButton) emojiButton.disabled = false;
+        if(fileUploadButton) fileUploadButton.classList.remove('disabled-input');
     };
 
     if (emojiButton) {
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const clearAttachment = () => {
         attachedFile = null;
-        fileUploadInput.value = '';
+        if(fileUploadInput) fileUploadInput.value = '';
         if (attachmentPreview) attachmentPreview.classList.add('hidden');
         if (fileUploadButton) {
             fileUploadButton.querySelector('i, svg')?.classList.remove('text-blue-500');
@@ -93,8 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
             attachedFile = file;
-            attachmentPreview.classList.remove('hidden');
-            attachmentFilename.textContent = file.name;
+            if(attachmentPreview) attachmentPreview.classList.remove('hidden');
+            if(attachmentFilename) attachmentFilename.textContent = file.name;
             fileUploadButton.querySelector('i, svg')?.classList.add('text-blue-500');
         });
     }
@@ -109,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chatWindow) return;
         const messageDiv = document.createElement('div');
         messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-        // Basic sanitization to prevent HTML injection from error messages
         const sanitizedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const formattedMessage = (sender === 'bot' ? sanitizedMessage.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') : sanitizedMessage).replace(/\n/g, '<br>');
         messageDiv.innerHTML = `<div class="chat-bubble ${sender}">${formattedMessage}</div>`;
@@ -141,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         disableChatInputs();
         if (userInput) addMessage(userInput, 'user');
         chatInput.value = '';
-        chatLoading.classList.remove('hidden');
+        if(chatLoading) chatLoading.classList.remove('hidden');
 
         const formData = new FormData();
         formData.append('prompt', userInput);
@@ -149,30 +148,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch('/chat', { method: 'POST', body: formData });
-            
             if (response.status === 401) {
                  addMessage('Your session has expired. Redirecting to login...', 'bot');
                  setTimeout(() => { window.location.href = '/'; }, 2000);
                  return;
             }
-            
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Server responded with status: ${response.status}`);
             
-            if (!response.ok) {
-                throw new Error(data.error || `Server responded with status: ${response.status}`);
-            }
-            
-            if (data.type === 'image') {
-                addImage(data.data);
-            } else {
-                addMessage(data.data, 'bot');
-            }
+            if (data.type === 'image') addImage(data.data);
+            else addMessage(data.data, 'bot');
 
         } catch (error) {
             console.error("handleChat Error:", error);
             addMessage(`A technical error occurred: ${error.toString()}`, 'bot');
         } finally {
-            chatLoading.classList.add('hidden');
+            if(chatLoading) chatLoading.classList.add('hidden');
             clearAttachment();
             enableChatInputs();
         }
@@ -190,9 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
         vtoaInput.addEventListener('change', (e) => {
             vtoaFile = e.target.files[0];
             if (vtoaFile) {
-                vtoaFilename.textContent = `Selected: ${vtoaFile.name}`;
-                vtoaConvertBtn.disabled = false;
-                document.getElementById('vtoa-status').innerHTML = '';
+                if(vtoaFilename) vtoaFilename.textContent = `Selected: ${vtoaFile.name}`;
+                if(vtoaConvertBtn) vtoaConvertBtn.disabled = false;
+                const vtoaStatus = document.getElementById('vtoa-status');
+                if (vtoaStatus) vtoaStatus.innerHTML = '';
             }
         });
     }
@@ -215,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     downloadLink.innerText = 'Click here to download your audio file';
                     const statusContainer = document.getElementById('vtoa-status');
                     showStatus('vtoa-status', 'Conversion successful!', 'success');
-                    statusContainer.appendChild(downloadLink);
+                    if (statusContainer) statusContainer.appendChild(downloadLink);
                 } catch (error) {
                     console.error('Conversion failed:', error);
                     showStatus('vtoa-status', 'Error: This video format may not be supported by your browser.', 'error');
@@ -288,12 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const textToTranslate = translatorTextInput.value;
             const targetLanguage = translatorLangSelect.value;
             if (!textToTranslate.trim()) {
-                translatorOutput.textContent = 'Please enter some text to translate.';
+                if(translatorOutput) translatorOutput.textContent = 'Please enter some text to translate.';
                 return;
             }
             translatorButton.disabled = true;
             translatorButton.textContent = 'Translating...';
-            translatorOutput.textContent = '';
+            if(translatorOutput) translatorOutput.textContent = '';
             try {
                 const response = await fetch('/translate', {
                     method: 'POST',
@@ -301,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ text: textToTranslate, targetLanguage: targetLanguage })
                 });
                 if (response.status === 401) {
-                    translatorOutput.textContent = 'Your session has expired. Please log in again.';
+                    if(translatorOutput) translatorOutput.textContent = 'Your session has expired. Please log in again.';
                     return;
                 }
                 if (!response.ok) {
@@ -309,10 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(errorData.error);
                 }
                 const data = await response.json();
-                translatorOutput.textContent = data.translatedText;
+                if(translatorOutput) translatorOutput.textContent = data.translatedText;
             } catch (error) {
                 console.error('Translation error:', error);
-                translatorOutput.textContent = `Error: ${error.message}`;
+                if(translatorOutput) translatorOutput.textContent = `Error: ${error.message}`;
             } finally {
                 translatorButton.disabled = false;
                 translatorButton.textContent = 'Translate';
@@ -321,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================
-    // ---         REWRITTEN VOICE ASSISTANT LOGIC (SIMPLIFIED)        ---
+    // ---         FINAL DEBUGGING VERSION FOR VOICE ASSISTANT         ---
     // ===================================================================
     const toggleAssistantBtn = document.getElementById('toggle-assistant-btn');
     const assistantStatus = document.getElementById('assistant-status');
@@ -339,35 +331,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let animationClass = '';
 
         switch (state) {
-            case 'listening':
-                icon = 'mic';
-                text = 'Listening...';
-                animationClass = 'animate-pulse';
-                break;
-            case 'thinking':
-                icon = 'brain-circuit';
-                text = 'Thinking...';
-                animationClass = 'animate-spin';
-                break;
-            case 'speaking':
-                icon = 'volume-2';
-                text = 'Speaking...';
-                animationClass = 'animate-pulse';
-                break;
-            case 'idle':
-            default:
-                icon = 'mic';
-                text = 'Press the button to start.';
-                break;
+            case 'listening': icon = 'mic'; text = 'Listening...'; animationClass = 'animate-pulse'; break;
+            case 'thinking': icon = 'brain-circuit'; text = 'Thinking...'; animationClass = 'animate-spin'; break;
+            case 'speaking': icon = 'volume-2'; text = 'Speaking...'; animationClass = 'animate-pulse'; break;
+            case 'idle': default: icon = 'mic'; text = 'Press the button to start.'; break;
         }
 
         if (assistantGesture) {
             assistantGesture.innerHTML = `<i data-lucide="${icon}" class="w-24 h-24 ${animationClass}"></i>`;
             lucide.createIcons();
         }
-        if (assistantStatus) {
-            assistantStatus.textContent = text;
-        }
+        if (assistantStatus) assistantStatus.textContent = text;
     };
     
     const setupSpeech = () => {
@@ -385,23 +359,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startConversation = () => {
         if (!VoiceAssistantSpeechRecognition) {
-            assistantStatus.textContent = "Speech recognition not supported in this browser.";
-            return;
+            if (assistantStatus) assistantStatus.textContent = "Speech recognition not supported."; return;
         }
         if (isAssistantActive) return;
         
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(() => {
                 isAssistantActive = true;
-                toggleAssistantBtn.innerHTML = `<i data-lucide="mic-off" class="w-5 h-5 mr-2"></i> Stop Assistant`;
-                toggleAssistantBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-                toggleAssistantBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                if(toggleAssistantBtn) {
+                    toggleAssistantBtn.innerHTML = `<i data-lucide="mic-off" class="w-5 h-5 mr-2"></i> Stop Assistant`;
+                    toggleAssistantBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    toggleAssistantBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                }
                 lucide.createIcons();
                 listen(); 
             })
             .catch(err => {
                 console.error("Microphone access denied:", err);
-                assistantStatus.textContent = "Microphone access is required.";
+                if(assistantStatus) assistantStatus.textContent = "Microphone access is required.";
             });
     };
 
@@ -412,10 +387,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (recognition) recognition.stop();
         if (speechSynthesis.speaking) speechSynthesis.cancel();
         
-        userTranscript.textContent = "...";
-        toggleAssistantBtn.innerHTML = `<i data-lucide="mic" class="w-5 h-5 mr-2"></i> Start Assistant`;
-        toggleAssistantBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-        toggleAssistantBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        if(userTranscript) userTranscript.textContent = "...";
+        if(toggleAssistantBtn) {
+            toggleAssistantBtn.innerHTML = `<i data-lucide="mic" class="w-5 h-5 mr-2"></i> Start Assistant`;
+            toggleAssistantBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            toggleAssistantBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        }
         lucide.createIcons();
         updateAssistantGesture('idle');
     };
@@ -429,13 +406,17 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.interimResults = false;
         recognition.lang = 'en-US';
 
+        let resultFound = false;
+
         recognition.onresult = (event) => {
+            resultFound = true;
             const transcript = event.results[0][0].transcript.trim();
-            userTranscript.textContent = `"${transcript}"`;
+            if(userTranscript) userTranscript.textContent = `"${transcript}"`;
             sendToAI(transcript);
         };
         
         recognition.onerror = (event) => {
+            resultFound = true;
             console.error('Speech recognition error:', event.error);
             if (userTranscript) {
                 userTranscript.textContent = `Mic Error: ${event.error}`;
@@ -444,13 +425,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         recognition.onend = () => {
             if (isAssistantActive && !speechSynthesis.speaking) {
-                // To prevent a rapid on/off loop on some mobile errors, 
-                // we add a small delay before trying to listen again.
+                if (!resultFound && userTranscript) {
+                    userTranscript.textContent = "Debug: No speech detected. Retrying...";
+                }
                 setTimeout(() => {
                     if (isAssistantActive) {
                         listen();
                     }
-                }, 500);
+                }, 1000);
             }
         };
 
@@ -471,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error sending to AI from voice assistant:", error);
             const errorMessage = `Voice assistant error: ${error.toString()}`;
             addMessage(errorMessage, 'bot');
-            speak("Sorry, I encountered an error. Please check the chat window for details.");
+            speak("Sorry, an error occurred. Please check the chat window for details.");
             stopConversation();
         }
     };
